@@ -42,6 +42,7 @@ a:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
 
 .wrap { max-width: 1180px; margin: 0 auto; padding-block: max(48px, env(safe-area-inset-top, 0px)) max(40px, env(safe-area-inset-bottom, 0px)); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
 .head { display: flex; align-items: center; gap: 20px; padding-bottom: 28px; border-bottom: 2px solid var(--ink); }
+.avatar { width: 88px; height: 88px; flex: none; object-fit: cover; border: 2px solid var(--ink); }
 .mark { width: 64px; height: 64px; flex: none; display: grid; place-items: center; background: var(--mark); color: var(--mark-ink); font: 800 22px/1 var(--display); font-stretch: 125%; }
 .id { min-width: 0; }
 .name { margin: 0; font-family: var(--display); font-weight: 800; font-stretch: 125%; font-size: clamp(28px, 6vw, 64px); line-height: .95; letter-spacing: -.01em; text-wrap: balance; }
@@ -63,6 +64,7 @@ a:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
 .ideas span { font-size: 13px; line-height: 1.45; color: var(--muted); }
 
 .card { background: var(--surface); border: 1px solid var(--line); }
+.card + .card { margin-top: 20px; }
 .card img { width: 100%; border-bottom: 1px solid var(--line); }
 .card-body { padding: 18px 20px 20px; display: grid; gap: 12px; }
 .card h3 { margin: 0; font: 800 26px/1 var(--display); font-stretch: 118%; }
@@ -83,6 +85,7 @@ a:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
   .col:not(:first-child) { padding-left: 0; }
   .head { align-items: flex-start; }
   .mark { width: 48px; height: 48px; font-size: 17px; }
+  .avatar { width: 64px; height: 64px; }
 }
 @media (prefers-reduced-motion: no-preference) {
   .btn, .link, .meta a { transition: opacity .15s; }
@@ -93,7 +96,7 @@ a:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
 <body>
 <main class="wrap">
   <header class="head">
-    <div class="mark" aria-hidden="true">DM</div>
+    <img class="avatar" src="img/davyd.jpg" alt="Davyd Medvedchuk" width="88" height="88">
     <div class="id">
       <h1 class="name">Davyd Medvedchuk</h1>
       <p class="meta">
@@ -107,16 +110,12 @@ a:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
 
   <div class="board">
     <section class="col">
-      <h2 class="stage"><span class="word">Ideas</span><span class="arrow">→</span><span class="count">03</span></h2>
-      <ul class="ideas">
-        <li><strong>Quote builder</strong><span>Your price list in, a client-ready proposal out.</span></li>
-        <li><strong>Materials calculator</strong><span>Your own prices per m², bag or sheet. Enter the volumes, get the total.</span></li>
-        <li><strong>Cut-list optimizer</strong><span>Fits chipboard parts onto sheets with less waste.</span></li>
-      </ul>
+      <h2 class="stage"><span class="word">Ideas</span><span class="arrow">→</span><span class="count">00</span></h2>
+      <div class="empty">No ideas queued.<span>Brainstorm first.</span></div>
     </section>
 
     <section class="col now">
-      <h2 class="stage"><span class="word">prototypes</span><span class="arrow">→</span><span class="count">01</span></h2>
+      <h2 class="stage"><span class="word">prototypes</span><span class="arrow">→</span><span class="count">02</span></h2>
       <article class="card">
         <img src="img/fotoobra.jpg" alt="FotoObra: job list, photo feed and a PDF report" width="1600" height="820">
         <div class="card-body">
@@ -130,6 +129,19 @@ a:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
           </div>
         </div>
       </article>
+      <article class="card">
+        <img src="img/sixtap.jpg" alt="Sixtap: 6 taps and the price is ready" width="1600" height="800" loading="lazy">
+        <div class="card-body">
+          <h3>Sixtap</h3>
+          <p>A quick estimate for kitchens, bathrooms and installation. Six taps, a price with a range, a message for the client on WhatsApp.</p>
+          <ul class="tags"><li>No account</li><li>Free</li><li>EN · PT · RU · UA</li></ul>
+          <div class="links">
+            <a class="btn" href="https://davydmedvedchuk.github.io/sixtap/">Open the app</a>
+            <a class="link" href="https://github.com/davydmedvedchuk/sixtap">Source on GitHub</a>
+          </div>
+        </div>
+      </article>
+
     </section>
 
     <section class="col">
