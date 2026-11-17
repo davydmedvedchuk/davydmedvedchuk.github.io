@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Photo shrinker</title>
+<meta name="description" content="Compress and convert photos in your browser. Nothing is uploaded.">
+<meta name="theme-color" content="#F3F3F0" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#131417" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%23F5C518'/%3E%3Ctext x='32' y='42' font-family='Arial,sans-serif' font-size='28' font-weight='800' text-anchor='middle' fill='%2315171B'%3EPS%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root {
+  --bg: #F3F3F0; --surface: #FFFFFF; --ink: #15171B; --muted: #62666F;
+  --line: #D5D6D9; --line2: #B4B7BD; --mark: #F5C518; --mark-ink: #15171B; --good: #1E7B3A;
+  --display: "Archivo", "Arial Narrow", Arial, sans-serif;
+  --body: "Archivo", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #131417; --surface: #1B1D21; --ink: #ECEDEF; --muted: #9EA2AA; --line: #2C2F35; --line2: #454952; --good: #5FD08A; color-scheme: dark; }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font-family: var(--body); -webkit-font-smoothing: antialiased; -webkit-text-size-adjust: 100%; }
+button, select, input { font: inherit; color: inherit; }
+.wrap { max-width: 760px; margin: 0 auto; padding: max(32px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(40px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
+.top { display: flex; align-items: center; gap: 14px; padding-bottom: 20px; border-bottom: 2px solid var(--ink); }
+.mark { width: 48px; height: 48px; flex: none; display: grid; place-items: center; background: var(--mark); color: var(--mark-ink); font: 800 17px/1 var(--display); font-stretch: 125%; }
+h1 { margin: 0; font: 800 clamp(26px, 6vw, 40px)/1 var(--display); font-stretch: 125%; letter-spacing: -.01em; }
+.sub { margin: 6px 0 0; font: 400 12.5px/1.5 var(--mono); color: var(--muted); }
+.back { margin-left: auto; white-space: nowrap; font: 500 12px var(--mono); color: var(--ink); text-underline-offset: 3px; }
+
+.drop { display: grid; gap: 6px; place-items: center; text-align: center; margin-top: 24px; padding: 36px 16px; border: 1px dashed var(--line2); cursor: pointer; transition: background .15s, border-color .15s; }
+.drop.over { background: var(--surface); border-color: var(--ink); }
+.drop strong { font: 700 20px var(--display); font-stretch: 112%; }
+.drop span { font: 12px var(--mono); color: var(--muted); }
+.drop input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.drop:focus-within { outline: 2px solid currentColor; outline-offset: 3px; }
+
+.opts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; margin-top: 20px; }
+.opt { display: grid; gap: 6px; font: 500 11.5px var(--mono); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.opt select { background: var(--surface); border: 1px solid var(--line2); padding: 10px 12px; font: 500 15px var(--body); text-transform: none; letter-spacing: 0; color: var(--ink); border-radius: 0; min-height: 44px; }
+.opt input[type=range] { width: 100%; accent-color: var(--ink); min-height: 44px; }
+.opt output { color: var(--ink); }
+.opt.off { opacity: .45; pointer-events: none; }
+
+.list { list-style: none; margin: 24px 0 0; padding: 0; display: grid; gap: 10px; }
+.item { display: grid; grid-template-columns: 64px 1fr auto; gap: 12px; align-items: center; background: var(--surface); border: 1px solid var(--line); padding: 10px; }
+.thumb { width: 64px; height: 64px; object-fit: cover; background: var(--line); }
+.info { min-width: 0; display: grid; gap: 3px; }
+.fname { font: 600 14px var(--body); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sizes { font: 400 12.5px var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.sizes b { color: var(--ink); font-weight: 500; }
+.saved { color: var(--good); font-weight: 500; }
+.dl { background: var(--ink); color: var(--bg); border: 0; padding: 0 14px; min-height: 44px; font: 600 14px var(--body); text-decoration: none; display: inline-grid; place-items: center; cursor: pointer; }
+.dl[aria-disabled=true] { opacity: .4; pointer-events: none; }
+
+.bar { position: sticky; bottom: 0; display: none; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 16px; padding: 12px 0 max(12px, env(safe-area-inset-bottom)); background: var(--bg); border-top: 1px solid var(--line); }
+.bar.show { display: flex; }
+.total { font: 500 13px var(--mono); margin-right: auto; font-variant-numeric: tabular-nums; }
+.ghost { background: transparent; color: var(--ink); border: 1px solid var(--ink); padding: 0 14px; min-height: 44px; font: 600 14px var(--body); cursor: pointer; }
+.note { margin-top: 28px; padding-top: 14px; border-top: 1px solid var(--line); font: 12px/1.6 var(--mono); color: var(--muted); }
+.err { color: #C0392B; }
+@media (prefers-reduced-motion: no-preference) { .dl, .ghost { transition: opacity .15s; } .dl:hover, .ghost:hover { opacity: .85; } }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <header class="top">
+    <div class="mark">PS</div>
+    <div>
+      <h1>Photo shrinker</h1>
+      <p class="sub">Smaller photos. Nothing leaves your device.</p>
+    </div>
+    <a class="back" href="../">← all</a>
+  </header>
+
+  <label class="drop" id="drop">
+    <strong>Choose photos</strong>
+    <span>or drop them here</span>
+    <input id="file" type="file" accept="image/*" multiple>
+  </label>
+
+  <section class="opts" aria-label="Settings">
+    <label class="opt">Longest side
+      <select id="size">
+        <option value="0">Original</option>
+        <option value="3000">3000 px</option>
+        <option value="2048" selected>2048 px</option>
+        <option value="1600">1600 px</option>
+        <option value="1200">1200 px</option>
+        <option value="800">800 px</option>
+      </select>
+    </label>
+    <label class="opt">Format
+      <select id="fmt">
+        <option value="image/jpeg" selected>JPEG</option>
+        <option value="image/webp" id="webpOpt">WebP</option>
+        <option value="image/png">PNG</option>
+      </select>
+    </label>
+    <label class="opt" id="qWrap"><span>Quality <output id="qOut">80</output></span>
+      <input id="q" type="range" min="30" max="95" value="80">
+    </label>
+  </section>
+
+  <ul class="list" id="list"></ul>
+
+  <div class="bar" id="bar">
+    <span class="total" id="total"></span>
+    <button class="ghost" id="share" hidden>Share / Save</button>
+    <button class="dl" id="zip">Download all (ZIP)</button>
+  </div>
+
+  <p class="note">Re-encoding strips EXIF data, including GPS location. Photos are processed in this tab and never uploaded.</p>
+</main>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const drop = $('drop'), fileIn = $('file'), list = $('list'), bar = $('bar'), total = $('total');
+  const sizeSel = $('size'), fmtSel = $('fmt'), q = $('q'), qOut = $('qOut'), qWrap = $('qWrap');
+  const shareBtn = $('share'), zipBtn = $('zip');
+
+  let files = [];      // { file, row, blob, url, name }
+  let run = 0;         // generation token: newer run cancels older one
+
+  // WebP encode is missing in some browsers (Safari canvas falls back to PNG). Hide it there.
+  const c0 = document.createElement('canvas'); c0.width = c0.height = 1;
+  if (!c0.toDataURL('image/webp').startsWith('data:image/webp')) $('webpOpt').remove();
+
+  const fmtBytes = (n) => n < 1024 ? n + ' B' : n < 1048576 ? Math.round(n / 1024) + ' KB' : (n / 1048576).toFixed(1) + ' MB';
+  const ext = { 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/png': 'png' };
+  const baseName = (n) => n.replace(/\.[^.]+$/, '') || 'photo';
+
+  function addFiles(fl) {
+    const imgs = [...fl].filter((f) => f.type.startsWith('image/') || /\.(heic|heif)$/i.test(f.name));
+    if (!imgs.length) return;
+    for (const f of imgs) files.push({ file: f, row: makeRow(f), blob: null, url: null, name: '' });
+    process();
+  }
+
+  function makeRow(f) {
+    const li = document.createElement('li');
+    li.className = 'item';
+    li.innerHTML = '<img class="thumb" alt=""><div class="info"><div class="fname"></div><div class="sizes">Working…</div></div><a class="dl" aria-disabled="true">Save</a>';
+    li.querySelector('.fname').textContent = f.name;
+    list.appendChild(li);
+    return li;
+  }
+
+  async function encode(f, maxSide, type, quality) {
+    const bmp = await createImageBitmap(f);   // applies EXIF orientation
+    let w = bmp.width, h = bmp.height;
+    const bmpW = w, bmpH = h;
+    if (maxSide && Math.max(w, h) > maxSide) {
+      const k = maxSide / Math.max(w, h);
+      w = Math.round(w * k); h = Math.round(h * k);
+    }
+    const cv = document.createElement('canvas');
+    cv.width = w; cv.height = h;
+    const ctx = cv.getContext('2d');
+    if (type === 'image/jpeg') { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h); }
+    ctx.drawImage(bmp, 0, 0, w, h);
+    if (bmp.close) bmp.close();
+    const blob = await new Promise((res) => cv.toBlob(res, type, quality));
+    if (!blob) throw new Error('encode failed');
+    // Already small and same format: keep the original instead of making it bigger.
+    if (w === bmpW && h === bmpH && blob.size >= f.size && f.type === type) return { blob: f, w, h, kept: true };
+    return { blob, w, h };
+  }
+
+  async function process() {
+    const my = ++run;
+    const maxSide = +sizeSel.value, type = fmtSel.value, quality = q.value / 100;
+    qWrap.classList.toggle('off', type === 'image/png');
+    for (const it of files) {
+      if (my !== run) return;
+      const sizes = it.row.querySelector('.sizes'), a = it.row.querySelector('.dl'), th = it.row.querySelector('.thumb');
+      sizes.textContent = 'Working…'; a.setAttribute('aria-disabled', 'true');
+      try {
+        const r = await encode(it.file, maxSide, type, quality);
+        if (my !== run) return;
+        if (it.url) URL.revokeObjectURL(it.url);
+        it.blob = r.blob; it.url = URL.createObjectURL(r.blob);
+        it.name = r.kept ? it.file.name : baseName(it.file.name) + '-small.' + (ext[r.blob.type] || 'jpg');
+        th.src = it.url;
+        const diff = Math.round((1 - r.blob.size / it.file.size) * 100);
+        sizes.innerHTML = r.kept
+          ? '<b>' + fmtBytes(it.file.size) + '</b> · ' + r.w + '×' + r.h + ' · <span>already small</span>'
+          : '<b>' + fmtBytes(it.file.size) + '</b> → <b>' + fmtBytes(r.blob.size) + '</b> · ' + r.w + '×' + r.h +
+            (diff > 0 ? ' · <span class="saved">−' + diff + '%</span>' : ' · <span>+' + Math.abs(diff) + '%</span>');
+        a.href = it.url; a.download = it.name; a.removeAttribute('aria-disabled');
+      } catch (e) {
+        sizes.innerHTML = '<span class="err">Can’t read this file. Try a JPG or PNG.</span>';
+        it.blob = null;
+      }
+    }
+    if (my === run) updateTotal();
+  }
+
+  function updateTotal() {
+    const ok = files.filter((f) => f.blob);
+    bar.classList.toggle('show', ok.length > 0);
+    if (!ok.length) return;
+    const before = ok.reduce((s, f) => s + f.file.size, 0), after = ok.reduce((s, f) => s + f.blob.size, 0);
+    total.textContent = ok.length + (ok.length === 1 ? ' photo · ' : ' photos · ') + fmtBytes(before) + ' → ' + fmtBytes(after);
+    zipBtn.textContent = ok.length === 1 ? 'Download' : 'Download all (ZIP)';
+    const probe = ok.map((f) => new File([f.blob], f.name, { type: f.blob.type }));
+    shareBtn.hidden = !(navigator.canShare && navigator.canShare({ files: probe }));
+  }
+
+  /* Minimal ZIP (store, no compression): JPEGs are already compressed. */
+  const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+  const crc32 = (u8) => { let c = 0xFFFFFFFF; for (let i = 0; i < u8.length; i++) c = CRC[(c ^ u8[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; };
+
+  async function makeZip(items) {
+    const enc = new TextEncoder(), d = new Date();
+    const time = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1);
+    const date = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
+    const parts = [], central = [], used = new Set();
+    let offset = 0;
+    for (const it of items) {
+      let name = it.name, n = 1;
+      while (used.has(name)) name = it.name.replace(/(\.[^.]+)$/, '-' + (++n) + '$1');
+      used.add(name);
+      const data = new Uint8Array(await it.blob.arrayBuffer()), nm = enc.encode(name), crc = crc32(data);
+      const lh = new DataView(new ArrayBuffer(30));
+      lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0x0800, true); lh.setUint16(8, 0, true);
+      lh.setUint16(10, time, true); lh.setUint16(12, date, true); lh.setUint32(14, crc, true);
+      lh.setUint32(18, data.length, true); lh.setUint32(22, data.length, true); lh.setUint16(26, nm.length, true); lh.setUint16(28, 0, true);
+      const ch = new DataView(new ArrayBuffer(46));
+      ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true); ch.setUint16(8, 0x0800, true); ch.setUint16(10, 0, true);
+      ch.setUint16(12, time, true); ch.setUint16(14, date, true); ch.setUint32(16, crc, true);
+      ch.setUint32(20, data.length, true); ch.setUint32(24, data.length, true); ch.setUint16(28, nm.length, true);
+      ch.setUint32(42, offset, true);
+      parts.push(lh, nm, data);
+      central.push(ch, nm);
+      offset += 30 + nm.length + data.length;
+    }
+    const cSize = central.reduce((s, p) => s + (p.byteLength ?? p.length), 0);
+    const end = new DataView(new ArrayBuffer(22));
+    end.setUint32(0, 0x06054b50, true); end.setUint16(8, items.length, true); end.setUint16(10, items.length, true);
+    end.setUint32(12, cSize, true); end.setUint32(16, offset, true);
+    return new Blob([...parts, ...central, end], { type: 'application/zip' });
+  }
+
+  function save(blob, name) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  }
+
+  zipBtn.addEventListener('click', async () => {
+    const ok = files.filter((f) => f.blob);
+    if (!ok.length) return;
+    if (ok.length === 1) return save(ok[0].blob, ok[0].name);
+    save(await makeZip(ok), 'photos-small.zip');
+  });
+
+  shareBtn.addEventListener('click', async () => {
+    const ok = files.filter((f) => f.blob);
+    try { await navigator.share({ files: ok.map((f) => new File([f.blob], f.name, { type: f.blob.type })) }); } catch (e) { /* cancelled */ }
+  });
+
+  fileIn.addEventListener('change', () => { addFiles(fileIn.files); fileIn.value = ''; });
+  ['dragenter', 'dragover'].forEach((e) => drop.addEventListener(e, (ev) => { ev.preventDefault(); drop.classList.add('over'); }));
+  ['dragleave', 'drop'].forEach((e) => drop.addEventListener(e, (ev) => { ev.preventDefault(); drop.classList.remove('over'); }));
+  drop.addEventListener('drop', (ev) => addFiles(ev.dataTransfer.files));
+  [sizeSel, fmtSel].forEach((el) => el.addEventListener('change', () => files.length && process()));
+  let t; q.addEventListener('input', () => { qOut.textContent = q.value; clearTimeout(t); t = setTimeout(() => files.length && process(), 250); });
+})();
+</script>
+</body>
+</html>
