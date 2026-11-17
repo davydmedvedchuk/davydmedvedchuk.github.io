@@ -168,11 +168,18 @@ h1 { margin: 0; font: 800 clamp(26px, 6vw, 40px)/1 var(--display); font-stretch:
     if (type === 'image/jpeg') { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h); }
     ctx.drawImage(bmp, 0, 0, w, h);
     if (bmp.close) bmp.close();
-    const blob = await new Promise((res) => cv.toBlob(res, type, quality));
+    const enc = (qv) => new Promise((res) => cv.toBlob(res, type, qv));
+    let usedQ = quality;
+    let blob = await enc(usedQ);
     if (!blob) throw new Error('encode failed');
-    // Already small and same format: keep the original instead of making it bigger.
-    if (w === bmpW && h === bmpH && blob.size >= f.size && f.type === type) return { blob: f, w, h, kept: true };
-    return { blob, w, h };
+    const same = w === bmpW && h === bmpH && f.type === type;
+    // Same size and format but bigger? The photo is already compressed. Try lower quality.
+    if (same && type !== 'image/png') {
+      while (blob.size >= f.size && usedQ > 0.4) { usedQ = Math.max(0.4, usedQ - 0.15); blob = await enc(usedQ); }
+    }
+    // Still not smaller: keep the original instead of making it bigger.
+    if (same && blob.size >= f.size) return { blob: f, w, h, kept: true };
+    return { blob, w, h, q: usedQ !== quality ? Math.round(usedQ * 100) : 0 };
   }
 
   async function process() {
@@ -187,14 +194,15 @@ h1 { margin: 0; font: 800 clamp(26px, 6vw, 40px)/1 var(--display); font-stretch:
         const r = await encode(it.file, maxSide, type, quality);
         if (my !== run) return;
         if (it.url) URL.revokeObjectURL(it.url);
-        it.blob = r.blob; it.url = URL.createObjectURL(r.blob);
+        it.blob = r.blob; it.kept = !!r.kept; it.url = URL.createObjectURL(r.blob);
         it.name = r.kept ? it.file.name : baseName(it.file.name) + '-small.' + (ext[r.blob.type] || 'jpg');
         th.src = it.url;
         const diff = Math.round((1 - r.blob.size / it.file.size) * 100);
         sizes.innerHTML = r.kept
           ? '<b>' + fmtBytes(it.file.size) + '</b> · ' + r.w + '×' + r.h + ' · <span>already small</span>'
           : '<b>' + fmtBytes(it.file.size) + '</b> → <b>' + fmtBytes(r.blob.size) + '</b> · ' + r.w + '×' + r.h +
-            (diff > 0 ? ' · <span class="saved">−' + diff + '%</span>' : ' · <span>+' + Math.abs(diff) + '%</span>');
+            (diff > 0 ? ' · <span class="saved">−' + diff + '%</span>' : ' · <span>+' + Math.abs(diff) + '%</span>') +
+            (r.q ? ' · q' + r.q : '');
         a.href = it.url; a.download = it.name; a.removeAttribute('aria-disabled');
       } catch (e) {
         sizes.innerHTML = '<span class="err">Can’t read this file. Try a JPG or PNG.</span>';
@@ -209,7 +217,9 @@ h1 { margin: 0; font: 800 clamp(26px, 6vw, 40px)/1 var(--display); font-stretch:
     bar.classList.toggle('show', ok.length > 0);
     if (!ok.length) return;
     const before = ok.reduce((s, f) => s + f.file.size, 0), after = ok.reduce((s, f) => s + f.blob.size, 0);
-    total.textContent = ok.length + (ok.length === 1 ? ' photo · ' : ' photos · ') + fmtBytes(before) + ' → ' + fmtBytes(after);
+    const kept = ok.filter((f) => f.kept).length;
+    total.textContent = ok.length + (ok.length === 1 ? ' photo · ' : ' photos · ') + fmtBytes(before) + ' → ' + fmtBytes(after) +
+      (kept ? ' · ' + kept + ' already small' : '');
     zipBtn.textContent = ok.length === 1 ? 'Download' : 'Download all (ZIP)';
     const probe = ok.map((f) => new File([f.blob], f.name, { type: f.blob.type }));
     shareBtn.hidden = !(navigator.canShare && navigator.canShare({ files: probe }));
